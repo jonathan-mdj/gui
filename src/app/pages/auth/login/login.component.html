@@ -1,0 +1,91 @@
+<div class="login-container">
+  <p-card [style]="{ width: '28rem', overflow: 'hidden' }">
+    <!-- Header con silueta -->
+    <ng-template #header>
+      <div class="card-header">
+        <i class="pi pi-user" style="font-size: 4rem; color: #ffffff;"></i>
+      </div>
+    </ng-template>
+
+    <!-- Título y subtítulo -->
+    <ng-template #title>Iniciar Sesión</ng-template>
+    <ng-template #subtitle>Ingresa tus credenciales para acceder</ng-template>
+
+    <!-- Formulario -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      
+      <!-- Campo de Email -->
+      <div class="input-group">
+        <label for="email" class="input-label">Correo electrónico</label>
+        <input 
+          id="email" 
+          pInputText 
+          formControlName="email"
+          type="email" 
+          placeholder="Ingresa tu correo electrónico"
+          class="input-field" />
+        <small 
+          class="p-error" 
+          *ngIf="email?.invalid && (email?.dirty || email?.touched)">
+          <span *ngIf="email?.errors?.['required']">El correo es requerido</span>
+          <span *ngIf="email?.errors?.['email']">Formato de correo inválido</span>
+        </small>
+      </div>
+
+      <!-- Campo de Contraseña -->
+      <div class="input-group">
+        <label for="password" class="input-label">Contraseña</label>
+        <p-password 
+          id="password" 
+          formControlName="password"
+          [toggleMask]="true"
+          [feedback]="false"
+          placeholder="Ingresa tu contraseña"
+          inputStyleClass="input-field">
+        </p-password>
+        <small 
+          class="p-error" 
+          *ngIf="password?.invalid && (password?.dirty || password?.touched)">
+          <span *ngIf="password?.errors?.['required']">La contraseña es requerida</span>
+          <span *ngIf="password?.errors?.['minlength']">Mínimo 6 caracteres</span>
+        </small>
+      </div>
+
+      <!-- Checkbox Recordarme -->
+      <div class="checkbox-group">
+        <p-checkbox 
+          formControlName="rememberMe"
+          inputId="rememberMe"
+          label="Recordarme">
+        </p-checkbox>
+      </div>
+
+      <!-- Enlace de contraseña olvidada -->
+      <div class="forgot-password">
+        <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <!-- Botones -->
+      <div class="button-group">
+        <p-button 
+          label="Cancelar" 
+          severity="secondary" 
+          [outlined]="true" 
+          class="cancel-button"
+          type="button" />
+        <p-button 
+          label="Iniciar Sesión" 
+          class="login-button"
+          [loading]="isLoading"
+          [disabled]="loginForm.invalid"
+          (click)="onSubmit()"
+          type="submit" />
+      </div>
+    </form>
+  </p-card>
+
+  <!-- Enlace de registro -->
+  <div class="register-link">
+    <p>¿No tienes cuenta? <a href="#" class="register-btn">Regístrate aquí</a></p>
+  </div>
+</div>
