@@ -1,3 +1,4 @@
+//auth.component.ts
 import { Component } from '@angular/core';
 
 @Component({

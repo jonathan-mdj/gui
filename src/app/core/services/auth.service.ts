@@ -1,7 +1,8 @@
+//auth.services.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { tap, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 export interface LoginRequest {
@@ -9,7 +10,13 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
   token: string;
   message: string;
   user: {
@@ -19,214 +26,154 @@ export interface LoginResponse {
   };
 }
 
-export interface RegisterRequest {
-  username: string;
-  password: string;
-  email?: string;
-}
-
-export interface ApiResponse {
+export interface RegisterResponse {
   message: string;
-  error?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:5001'; // Puerto del auth_service
+  private readonly API_URL = 'http://localhost:4000/auth';
   private readonly TOKEN_KEY = 'auth_token';
-  private readonly USER_KEY = 'auth_user';
+  private readonly USER_KEY = 'user_data';
+  
+  private currentUserSubject = new BehaviorSubject<any>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
 
-  private readonly currentUserSubject = new BehaviorSubject<any>(null);
-  public readonly currentUser$ = this.currentUserSubject.asObservable();
-
-  private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  public readonly isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  // Observable para el estado de autenticación
+  public isAuthenticated$ = this.currentUserSubject.pipe(
+    map(user => {
+      if (!user) return false;
+      const token = this.getToken();
+      return !!token && !this.isTokenExpired(token);
+    })
+  );
 
   constructor(
     private readonly http: HttpClient,
     private readonly router: Router
   ) {
-    this.checkAuthStatus();
+    // Cargar datos del usuario desde localStorage al inicializar
+    this.loadUserFromStorage();
   }
 
-  /**
-   * Verifica si el usuario está autenticado al inicializar el servicio
-   */
-  private checkAuthStatus(): void {
-    const token = this.getToken();
-    const user = this.getUser();
+  private loadUserFromStorage(): void {
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    const userData = localStorage.getItem(this.USER_KEY);
     
-    if (token && user) {
-      this.currentUserSubject.next(user);
-      this.isAuthenticatedSubject.next(true);
+    if (token && userData) {
+      try {
+        const user = JSON.parse(userData);
+        this.currentUserSubject.next(user);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        this.clearStorage();
+      }
     }
   }
 
-  /**
-   * Realizar login del usuario
-   */
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-
-    return this.http.post<LoginResponse>(`${this.API_URL}/login`, credentials, { headers })
-      .pipe(
-        map(response => {
-          if (response.token) {
-            // Guardar token y usuario en localStorage
-            this.setToken(response.token);
-            this.setUser(response.user);
-            
-            // Actualizar subjects
-            this.currentUserSubject.next(response.user);
-            this.isAuthenticatedSubject.next(true);
-          }
-          return response;
-        }),
-        catchError(error => {
-          console.error('Error en login:', error);
-          return throwError(() => error);
-        })
-      );
-  }
-
-  /**
-   * Registrar nuevo usuario
-   */
-  register(userData: RegisterRequest): Observable<ApiResponse> {
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-
-    return this.http.post<ApiResponse>(`${this.API_URL}/register`, userData, { headers })
-      .pipe(
-        catchError(error => {
-          console.error('Error en registro:', error);
-          return throwError(() => error);
-        })
-      );
-  }
-
-  /**
-   * Cerrar sesión del usuario
-   */
-  logout(): void {
-    // Limpiar localStorage
+  private clearStorage(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
-    
-    // Actualizar subjects
     this.currentUserSubject.next(null);
-    this.isAuthenticatedSubject.next(false);
-    
-    // Redirigir al login
+  }
+
+  login(credentials: LoginRequest): Observable<AuthResponse> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials, { headers })
+      .pipe(
+        tap(response => {
+          // Guardar token y datos del usuario
+          localStorage.setItem(this.TOKEN_KEY, response.token);
+          localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+          
+          // Actualizar el subject
+          this.currentUserSubject.next(response.user);
+          
+          console.log('Login successful:', response);
+        })
+      );
+  }
+
+  register(userData: RegisterRequest): Observable<RegisterResponse> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    return this.http.post<RegisterResponse>(`${this.API_URL}/register`, userData, { headers })
+      .pipe(
+        tap(response => {
+          console.log('Registration successful:', response);
+        })
+      );
+  }
+
+  logout(): void {
+    this.clearStorage();
     this.router.navigate(['/auth/login']);
   }
 
-  /**
-   * Obtener token del localStorage
-   */
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    return !!token && !this.isTokenExpired(token);
+  }
+
+  // Método para verificar si el usuario es admin
+  isAdmin(): boolean {
+    const user = this.getCurrentUser();
+    // Asumiendo que role_id = 1 es admin (ajusta según tu lógica)
+    return user && user.role_id === 1;
+  }
+
+  // Observable para verificar si es admin
+  public isAdmin$ = this.currentUser$.pipe(
+    map(user => user && user.role_id === 1)
+  );
+
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Guardar token en localStorage
-   */
-  private setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
-  }
-
-  /**
-   * Obtener usuario del localStorage
-   */
-  getUser(): any {
-    const user = localStorage.getItem(this.USER_KEY);
-    return user ? JSON.parse(user) : null;
-  }
-
-  /**
-   * Guardar usuario en localStorage
-   */
-  private setUser(user: any): void {
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-  }
-
-  /**
-   * Verificar si el usuario está autenticado
-   */
-  isAuthenticated(): boolean {
-    const token = this.getToken();
-    return !!token;
-  }
-
-  /**
-   * Obtener headers con autorización
-   */
-  getAuthHeaders(): HttpHeaders {
-    const token = this.getToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-  }
-
-  /**
-   * Obtener usuario actual
-   */
   getCurrentUser(): any {
-    return this.currentUserSubject.value;
-  }
-
-  /**
-   * Verificar si el usuario tiene un rol específico
-   */
-  hasRole(roleId: number): boolean {
-    const user = this.getCurrentUser();
-    return user && user.role_id === roleId;
-  }
-
-  /**
-   * Verificar si el usuario es admin
-   */
-  isAdmin(): boolean {
-    return this.hasRole(1); // 1 = admin según tu backend
-  }
-
-  /**
-   * Verificar si el usuario es manager
-   */
-  isManager(): boolean {
-    return this.hasRole(3); // 3 = manager según tu backend
-  }
-
-  /**
-   * Verificar si el usuario es user normal
-   */
-  isUser(): boolean {
-    return this.hasRole(2); // 2 = user según tu backend
-  }
-
-  /**
-   * Método para validar si el token es válido (opcional)
-   */
-  validateToken(): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(() => new Error('No token found'));
+    const userData = localStorage.getItem(this.USER_KEY);
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        return null;
+      }
     }
+    return null;
+  }
 
-    return this.http.get(`${this.API_URL}/validate-token`, {
-      headers: this.getAuthHeaders()
-    }).pipe(
-      catchError(error => {
-        console.error('Token validation failed:', error);
-        this.logout();
-        return throwError(() => error);
-      })
-    );
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return true;
+    }
+  }
+
+  // Método para refrescar el token (opcional)
+  refreshToken(): Observable<any> {
+    // Implementar si necesitas refresh token
+    return new Observable();
+  }
+
+  // Método para obtener información del usuario actual
+  getUserInfo(): Observable<any> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    return this.http.get(`${this.API_URL}/user`, { headers });
   }
 }

@@ -1,3 +1,5 @@
+<!-- login.component.html -->
+
 <div class="login-container">
   <p-card [style]="{ width: '28rem', overflow: 'hidden' }">
     <!-- Header con silueta -->
@@ -51,6 +53,25 @@
         </small>
       </div>
 
+      <!-- Campo de OTP -->
+      <div class="input-group">
+        <label for="otp" class="input-label">Código OTP</label>
+        <input 
+          id="otp" 
+          pInputText 
+          formControlName="otp"
+          type="text" 
+          maxlength="6"
+          placeholder="Ingresa el código de Google Authenticator"
+          class="input-field" />
+        <small 
+          class="p-error" 
+          *ngIf="otp?.invalid && (otp?.dirty || otp?.touched)">
+          <span *ngIf="otp?.errors?.['required']">El código OTP es requerido</span>
+          <span *ngIf="otp?.errors?.['pattern']">Debe ser un código de 6 dígitos</span>
+        </small>
+      </div>
+
       <!-- Checkbox Recordarme -->
       <div class="checkbox-group">
         <p-checkbox 
@@ -85,7 +106,7 @@
   </p-card>
 
   <!-- Enlace de registro -->
-  <div class="register-link">
-    <p>¿No tienes cuenta? <a href="#" class="register-btn">Regístrate aquí</a></p>
-  </div>
+<div class="register-link">
+  <p>¿No tienes cuenta? <a routerLink="/auth/register" class="register-btn">Regístrate aquí</a></p>
+</div>
 </div>

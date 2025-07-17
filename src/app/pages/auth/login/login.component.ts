@@ -1,6 +1,7 @@
+//login.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -10,8 +11,6 @@ import { MessageModule } from 'primeng/message';
 import { MessagesModule } from 'primeng/messages';
 import { CommonModule } from '@angular/common';
 import { AuthService, LoginRequest } from '../../../core/services/auth.service';
-// Importación corregida para Message
-//import { Message } from 'primeng/api';
 
 interface Message {
   severity?: string;
@@ -32,7 +31,8 @@ interface Message {
     MessageModule,
     MessagesModule,
     ReactiveFormsModule,
-    CommonModule
+    CommonModule,
+    RouterModule
   ],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
@@ -52,6 +52,7 @@ export class LoginComponent implements OnInit {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
+      otp: ['', [Validators.required, Validators.pattern('^[0-9]{6}$')]],
       rememberMe: [false]
     });
 
@@ -73,22 +74,20 @@ export class LoginComponent implements OnInit {
     if (this.loginForm.valid) {
       this.isLoading = true;
       this.messages = [];
-
-      const loginData: LoginRequest = {
-        username: this.loginForm.value.email, // El backend espera 'username'
-        password: this.loginForm.value.password
+      const loginData: LoginRequest & { otp: string } = {
+        username: this.loginForm.value.email,
+        password: this.loginForm.value.password,
+        otp: this.loginForm.value.otp
       };
 
       this.authService.login(loginData).subscribe({
         next: (response) => {
           this.isLoading = false;
           
-          // Mostrar mensaje de éxito
           this.messages = [
             { severity: 'success', summary: 'Éxito', detail: 'Sesión iniciada correctamente' }
           ];
 
-          // Redirigir después de un breve delay
           setTimeout(() => {
             this.router.navigate([this.returnUrl]);
           }, 1000);
@@ -97,7 +96,6 @@ export class LoginComponent implements OnInit {
           this.isLoading = false;
           console.error('Error en login:', error);
           
-          // Mostrar mensaje de error
           let errorMessage = 'Error al iniciar sesión';
           
           if (error.error?.error) {
@@ -143,6 +141,10 @@ export class LoginComponent implements OnInit {
     return this.loginForm.get('rememberMe');
   }
 
+  get otp() {
+    return this.loginForm.get('otp');
+  }
+
   // Método para navegar al registro
   goToRegister(): void {
     this.router.navigate(['/auth/register']);
@@ -151,5 +153,15 @@ export class LoginComponent implements OnInit {
   // Método para navegar a recuperar contraseña
   goToForgotPassword(): void {
     this.router.navigate(['/auth/forgot-password']);
+  }
+
+  // Método para limpiar mensajes
+  clearMessages(): void {
+    this.messages = [];
+  }
+
+  // Método para el botón cancelar
+  onCancel(): void {
+    this.router.navigate(['/']);
   }
 }

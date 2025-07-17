@@ -1,3 +1,4 @@
+//task.services.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -48,7 +49,7 @@ export interface SystemInfo {
   providedIn: 'root'
 })
 export class TaskService {
-  private readonly API_URL = 'http://localhost:5003'; // Puerto del task_service
+  private readonly API_URL = 'http://localhost:4000'; // Ahora apunta al API Gateway
 
   constructor(
     private readonly http: HttpClient,
@@ -57,52 +58,56 @@ export class TaskService {
 
   /**
    * Obtener todas las tareas del usuario
-   */
+   
   getTasks(): Observable<TaskResponse> {
     return this.http.get<TaskResponse>(`${this.API_URL}/tasks`, {
       headers: this.authService.getAuthHeaders()
     });
   }
+  */
 
   /**
    * Obtener una tarea específica por ID
-   */
+   
   getTask(id: number): Observable<TaskDetailResponse> {
     return this.http.get<TaskDetailResponse>(`${this.API_URL}/task/${id}`, {
       headers: this.authService.getAuthHeaders()
     });
   }
-
+*/
   /**
    * Crear una nueva tarea
-   */
+   
   createTask(task: Omit<Task, 'id'>): Observable<ApiResponse> {
     return this.http.post<ApiResponse>(`${this.API_URL}/task`, task, {
       headers: this.authService.getAuthHeaders()
     });
   }
+    */
 
   /**
    * Actualizar una tarea existente
-   */
+   
   updateTask(id: number, task: Partial<Task>): Observable<ApiResponse> {
     return this.http.put<ApiResponse>(`${this.API_URL}/task/${id}`, task, {
       headers: this.authService.getAuthHeaders()
     });
   }
+    */
 
   /**
    * Eliminar una tarea (soft delete)
-   */
+   
   deleteTask(id: number): Observable<ApiResponse> {
     return this.http.delete<ApiResponse>(`${this.API_URL}/task/${id}`, {
       headers: this.authService.getAuthHeaders()
     });
   }
+    */
 
   /**
    * Obtener tareas por status
-   */
+   
   getTasksByStatus(status: string): Observable<TaskResponse> {
     const statusMap: { [key: string]: string } = {
       'In Progress': 'in_progress',
@@ -117,57 +122,64 @@ export class TaskService {
       headers: this.authService.getAuthHeaders()
     });
   }
+    */
 
   /**
    * Obtener información del sistema
-   */
+   
   getSystemInfo(): Observable<SystemInfo> {
     return this.http.get<SystemInfo>(`${this.API_URL}/info`, {
       headers: this.authService.getAuthHeaders()
     });
   }
+    */
 
   /**
    * Obtener estadísticas de tareas
-   */
+   
   getTaskStats(): Observable<any> {
     return this.getSystemInfo();
   }
+    */
 
   /**
    * Cambiar status de una tarea
-   */
   updateTaskStatus(id: number, status: Task['status']): Observable<ApiResponse> {
     return this.updateTask(id, { status });
   }
+    */
 
   /**
    * Marcar tarea como completada
-   */
+   
   completeTask(id: number): Observable<ApiResponse> {
     return this.updateTaskStatus(id, 'Completed');
   }
+    */
 
   /**
    * Pausar tarea
-   */
+   
   pauseTask(id: number): Observable<ApiResponse> {
     return this.updateTaskStatus(id, 'Paused');
   }
+    */
 
   /**
    * Reanudar tarea
-   */
+   
   resumeTask(id: number): Observable<ApiResponse> {
     return this.updateTaskStatus(id, 'In Progress');
   }
+    */
 
   /**
    * Enviar tarea a revisión
-   */
+   
   sendToRevision(id: number): Observable<ApiResponse> {
     return this.updateTaskStatus(id, 'Revision');
   }
+    */
 
   /**
    * Validar formato de fecha
